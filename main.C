@@ -363,6 +363,37 @@ int main()
     h_ch10_HSD->Draw("colz");
     //h_ch10_SSD->Draw("colz");
 
+
+    // draw total E for 3, 4 bins
+    N_BINS_CH0 = 3;
+    rebuild_histograms();
+    const int N_events = N2e;
+    h_ch0_HSD->Scale(N_events / h_ch0_HSD->Integral());
+    h_ch0_SSD->Scale(N_events / h_ch0_SSD->Integral());
+    h_ch1_HSD->Scale(2.0 * N_events / h_ch1_HSD->Integral());
+    h_ch1_SSD->Scale(2.0 * N_events / h_ch1_SSD->Integral());
+    h_ch10_HSD->Scale(N_events / h_ch10_HSD->Integral());
+    h_ch10_SSD->Scale(N_events / h_ch10_SSD->Integral());
+    new TCanvas;
+    h_ch0_HSD->Draw("hist");
+    h_ch0_SSD->Draw("histsame");
+
+    N_BINS_CH0 = 4;
+    rebuild_histograms();
+    h_ch0_HSD->Scale(N_events / h_ch0_HSD->Integral());
+    h_ch0_SSD->Scale(N_events / h_ch0_SSD->Integral());
+    h_ch1_HSD->Scale(2.0 * N_events / h_ch1_HSD->Integral());
+    h_ch1_SSD->Scale(2.0 * N_events / h_ch1_SSD->Integral());
+    h_ch10_HSD->Scale(N_events / h_ch10_HSD->Integral());
+    h_ch10_SSD->Scale(N_events / h_ch10_SSD->Integral());
+    new TCanvas;
+    h_ch0_HSD->Draw("hist");
+    h_ch0_SSD->Draw("histsame");
+
+
+
+
+    if(0)
     {
         int N_BINS_MIN = 1;
         int N_BINS_MAX = 100;
