@@ -42,16 +42,34 @@ TH1D *h_ch1_SSD = nullptr;
 TH2D *h_ch10_HSD = nullptr;
 TH2D *h_ch10_SSD = nullptr;
 
-const double H_E_MAX = 4.0;
-Int_t N_BINS_CH0 = 40;
-Int_t N_BINS_CH1 = 40;
-Int_t N_BINS_CH10 = 40;
+TH1D *h_ch0_HSD_sys = nullptr;
+TH1D *h_ch1_HSD_sys = nullptr;
+TH2D *h_ch10_HSD_sys = nullptr;
 
-std::vector<double> V_PHYS_SYS_CH0;
-std::vector<double> V_PHYS_SYS_CH1;
-std::vector<double> V_PHYS_SYS_CH10;
+const double H_E_MAX = 3.2;
+Int_t N_BINS_CH0 = 32;
+Int_t N_BINS_CH1 = 32;
+Int_t N_BINS_CH10 = 32;
+
+//std::vector<double> V_PHYS_SYS_CH0;
+//std::vector<double> V_PHYS_SYS_CH1;
+//std::vector<double> V_PHYS_SYS_CH10;
+
+std::vector<double> alpha_coeff_ch0_sys1; // 5.55 % efficiency
+std::vector<double> alpha_coeff_ch0_sys2; // 0.2 % energy shift
+std::vector<double> alpha_coeff_ch1_sys1; // 5.55 % efficiency
+std::vector<double> alpha_coeff_ch1_sys2; // 0.2 % energy shift
+std::vector<double> alpha_coeff_ch10_sys1; // 5.55 % efficiency
+std::vector<double> alpha_coeff_ch10_sys2; // 0.2 % energy shift
+
+std::vector<double> chi2_SYS_CH0;
+std::vector<double> chi2_SYS_CH1;
+std::vector<double> chi2_SYS_CH10;
 
 
+
+
+#include "draw.h"
 
 
 
@@ -124,11 +142,11 @@ void load_psf_data()
     std::cout << h_psf_G0->Integral() << std::endl;
     std::cout << h_psf_G2->Integral() << std::endl;
 
-    h_psf_G0->Scale(1.0 / h_psf_G0->Integral());
-    h_psf_G2->Scale(1.0 / h_psf_G2->Integral());
+//    h_psf_G0->Scale(1.0 / h_psf_G0->Integral());
+//    h_psf_G2->Scale(1.0 / h_psf_G2->Integral());
 
-    std::cout << h_psf_G0->Integral() << std::endl;
-    std::cout << h_psf_G2->Integral() << std::endl;
+//    std::cout << h_psf_G0->Integral() << std::endl;
+//    std::cout << h_psf_G2->Integral() << std::endl;
 
 }
 
@@ -141,7 +159,21 @@ bool flag_rebuild_ch1_SSD = true;
 bool flag_rebuild_ch10_HSD = true;
 bool flag_rebuild_ch10_SSD = true;
 
-void rebuild_histograms()
+bool flag_rebuild_ch0_HSD_sys = false;
+bool flag_rebuild_ch1_HSD_sys = false;
+bool flag_rebuild_ch10_HSD_sys = false;
+
+
+double integral_ch0_HSD = 1.0;
+double integral_ch1_HSD = 1.0;
+double integral_ch10_HSD = 1.0;
+
+
+double gSYS_efficiency = 0.0;
+double gSYS_coherent_energy_shift = 0.0;
+
+
+void rebuild_histograms(const double N_events)
 {
 
     ///////////////////////////////////////////////////////////////////////////
@@ -159,6 +191,12 @@ void rebuild_histograms()
                              N_BINS_CH0, 0.0, H_E_MAX);
     }
 
+    if(flag_rebuild_ch0_HSD_sys)
+    {
+        h_ch0_HSD_sys = new TH1D("h_ch0_HSD_sys", "h_ch0_HSD_sys",
+                             N_BINS_CH0, 0.0, H_E_MAX);
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // ch 1
 
@@ -171,6 +209,12 @@ void rebuild_histograms()
     if(flag_rebuild_ch1_HSD)
     {
         h_ch1_SSD = new TH1D("h_ch1_SSD", "h_ch1_SSD",
+                             N_BINS_CH1, 0.0, H_E_MAX);
+    }
+
+    if(flag_rebuild_ch1_HSD_sys)
+    {
+        h_ch1_HSD_sys = new TH1D("h_ch1_HSD_sys", "h_ch1_HSD_sys",
                              N_BINS_CH1, 0.0, H_E_MAX);
     }
 
@@ -191,6 +235,17 @@ void rebuild_histograms()
                              N_BINS_CH10, 0.0, H_E_MAX);
     }
 
+    if(flag_rebuild_ch10_HSD_sys)
+    {
+        h_ch10_HSD_sys = new TH2D("h_ch10_HSD_sys", "h_ch10_HSD_sys",
+                             N_BINS_CH10, 0.0, H_E_MAX,
+                             N_BINS_CH10, 0.0, H_E_MAX);
+    }
+
+    
+    ///////////////////////////////////////////////////////////////////////////
+    // read data
+    ///////////////////////////////////////////////////////////////////////////
 
     for(Int_t j = 1; j <= h_psf_G0->GetNbinsY(); ++ j)
     {
@@ -208,8 +263,8 @@ void rebuild_histograms()
             const double G0 = G0_ps_integral_MeV;
             const double G2 = G2_ps_integral_MeV;
 
-            const double weight_HSD = 1.0 / (G0 + xi_31_HSD * G2) * (content_G0 + xi_31_HSD * content_G2);
-            const double weight_SSD = 1.0 / (G0 + xi_31_SSD * G2) * (content_G0 + xi_31_SSD * content_G2);
+            const double weight_HSD = (1.0 / (G0 + xi_31_HSD * G2)) * (content_G0 + xi_31_HSD * content_G2);
+            const double weight_SSD = (1.0 / (G0 + xi_31_SSD * G2)) * (content_G0 + xi_31_SSD * content_G2);
 
             // channel 0
             if(flag_rebuild_ch0_HSD)
@@ -219,6 +274,13 @@ void rebuild_histograms()
             if(flag_rebuild_ch0_SSD)
             {
                 h_ch0_SSD->Fill(e1 + e2, weight_SSD);
+            }
+            if(flag_rebuild_ch0_HSD_sys)
+            {
+                double e1_t = e1 * (1.0 + gSYS_coherent_energy_shift);
+                double e2_t = e2 * (1.0 + gSYS_coherent_energy_shift);
+                double weight_HSD_t = weight_HSD * (1.0 + gSYS_efficiency);
+                h_ch0_HSD_sys->Fill(e1_t + e2_t, weight_HSD_t);
             }
 
             // channel 1
@@ -231,6 +293,14 @@ void rebuild_histograms()
             {
                 h_ch1_SSD->Fill(e1, weight_SSD);
                 h_ch1_SSD->Fill(e2, weight_SSD);
+            }
+            if(flag_rebuild_ch1_HSD_sys)
+            {
+                double e1_t = e1 * (1.0 + gSYS_coherent_energy_shift);
+                double e2_t = e2 * (1.0 + gSYS_coherent_energy_shift);
+                double weight_HSD_t = weight_HSD * (1.0 + gSYS_efficiency);
+                h_ch1_HSD_sys->Fill(e1_t, weight_HSD_t);
+                h_ch1_HSD_sys->Fill(e2_t, weight_HSD_t);
             }
 
             // channel 10
@@ -256,15 +326,79 @@ void rebuild_histograms()
                     h_ch10_SSD->Fill(e2, e1, weight_SSD);
                 }
             }
+            if(flag_rebuild_ch10_HSD_sys)
+            {
+                if(e1 < e2)
+                {
+                    double e1_t = e1 * (1.0 + gSYS_coherent_energy_shift);
+                    double e2_t = e2 * (1.0 + gSYS_coherent_energy_shift);
+                    double weight_HSD_t = weight_HSD * (1.0 + gSYS_efficiency);
+                    h_ch10_HSD_sys->Fill(e1_t, e2_t, weight_HSD_t);
+                }
+                else
+                {
+                    double e1_t = e1 * (1.0 + gSYS_coherent_energy_shift);
+                    double e2_t = e2 * (1.0 + gSYS_coherent_energy_shift);
+                    double weight_HSD_t = weight_HSD * (1.0 + gSYS_efficiency);
+                    h_ch10_HSD_sys->Fill(e2_t, e1_t, weight_HSD_t);
+                }
+            }
         }
     }
 
-    h_ch0_HSD->Scale(1.0 / h_ch0_HSD->Integral());
-    h_ch0_SSD->Scale(1.0 / h_ch0_SSD->Integral());
-    h_ch1_HSD->Scale(2.0 / h_ch1_HSD->Integral());
-    h_ch1_SSD->Scale(2.0 / h_ch1_SSD->Integral());
-    h_ch10_HSD->Scale(1.0 / h_ch10_HSD->Integral());
-    h_ch10_SSD->Scale(1.0 / h_ch10_SSD->Integral());
+
+    if(flag_rebuild_ch0_HSD)
+    {
+        integral_ch0_HSD = h_ch0_HSD->Integral();
+    }
+    if(flag_rebuild_ch1_HSD)
+    {
+        integral_ch1_HSD = h_ch1_HSD->Integral();
+    }
+    if(flag_rebuild_ch10_HSD)
+    {
+        integral_ch10_HSD = h_ch10_HSD->Integral();
+    }
+
+    
+    if(flag_rebuild_ch0_HSD)
+    {
+        h_ch0_HSD->Scale(N_events / integral_ch0_HSD);
+    }
+    if(flag_rebuild_ch0_SSD)
+    {
+        h_ch0_SSD->Scale(N_events / integral_ch0_HSD);
+    }
+    if(flag_rebuild_ch0_HSD_sys)
+    {
+        h_ch0_HSD_sys->Scale(N_events / integral_ch0_HSD);
+    }
+
+    if(flag_rebuild_ch1_HSD)
+    {
+        h_ch1_HSD->Scale(2.0 * N_events / integral_ch1_HSD);
+    }
+    if(flag_rebuild_ch1_SSD)
+    {
+        h_ch1_SSD->Scale(2.0 * N_events / integral_ch1_HSD);
+    }
+    if(flag_rebuild_ch1_HSD_sys)
+    {
+        h_ch1_HSD_sys->Scale(2.0 * N_events / integral_ch1_HSD);
+    }
+
+    if(flag_rebuild_ch10_HSD)
+    {
+        h_ch10_HSD->Scale(N_events / integral_ch10_HSD);
+    }
+    if(flag_rebuild_ch10_SSD)
+    {
+        h_ch10_SSD->Scale(N_events / integral_ch10_HSD);
+    }
+    if(flag_rebuild_ch10_HSD_sys)
+    {
+        h_ch10_HSD_sys->Scale(N_events / integral_ch10_HSD);
+    }
 
 
 }
@@ -293,29 +427,83 @@ double calc_chi2(TH1D* h_data, TH1D* h_model)
     return chi2;
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////
-// chi2 2D
+// chi2 1D with systematics
 ///////////////////////////////////////////////////////////////////////////////
 
-double calc_chi2(TH2D* h_data, TH2D* h_model)
+double calc_chi2(
+    TH1D* h_data,
+    TH1D* h_model,
+    const std::vector<double> &sys1,
+    const std::vector<double> &sys2)
 {
-    double chi2 = 0.0;
-    for(Int_t j = 1; j <= h_model->GetNbinsX(); ++ j)
+    
+    std::vector<double> delta; // d - m
+    std::vector<double> sigma; // sigma i
+
+    for(Int_t i = 1; i <= h_model->GetNbinsX(); ++ i)
     {
-        for(Int_t i = 1; i <= h_model->GetNbinsY(); ++ i)
+        double content_model = h_model->GetBinContent(i);
+        double content_data = h_data->GetBinContent(i);
+        double error_model = std::sqrt(content_model);
+        if(content_model == 0.0) continue;
+
+        delta.push_back(content_data - content_model);
+        sigma.push_back(error_model);
+    }
+    TMatrixD *matrix = new TMatrixD(delta.size(), delta.size());
+
+    {
+        int j = 0;
+        for(int jj = 1; jj <= h_model->GetNbinsX(); ++ jj)
+        //for(int j = 0; j < matrix->GetNrows(); ++ j)
         {
-            double content_model = h_model->GetBinContent(i, j);
-            double content_data = h_data->GetBinContent(i, j);
-            double error_model = std::sqrt(content_model);
-            if((content_model == 0.0) && (content_data == 0.0))
+            if(h_model->GetBinContent(jj) <= 0.0) continue; 
+
+            int i = 0;
+            for(int ii = 1; ii <= h_model->GetNbinsX(); ++ ii)
+            //for(int i = 0; i < matrix->GetNcols(); ++ i)
             {
-                continue;
+                if(h_model->GetBinContent(ii) <= 0.0) continue;
+
+                double c = 0.0;
+                if(i == j)
+                {
+                    double sigma_i = sigma.at(i);
+                    double sigma_j = sigma.at(j);
+                    c += sigma_i * sigma_j;
+                }
+                double alpha_i = sys1.at(ii - 1);
+                double alpha_j = sys1.at(jj - 1);
+                c += alpha_i * alpha_j;
+                alpha_i = sys2.at(ii - 1);
+                alpha_j = sys2.at(jj - 1);
+                c += alpha_i * alpha_j;
+
+                //std::cout << "j=" << j << " i=" << i << " " << c << std::endl;
+                matrix->operator[](j).operator[](i) = c;
+
+                ++ i;
             }
-            double chi = std::pow((content_data - content_model) / error_model, 2.0);
-            chi2 += chi;
+
+            ++ j;
+        }
+
+    }
+    matrix->Invert();
+
+    double chi2 = 0.0;
+    for(int j = 0; j < matrix->GetNrows(); ++ j)
+    {
+        for(int i = 0; i < matrix->GetNcols(); ++ i)
+        {
+            double v_i = delta.at(i);
+            double V_ij = matrix->operator[](j).operator[](i);
+            double v_j = delta.at(j);
+            chi2 += v_i * V_ij * v_j;
         }
     }
+
     return chi2;
 }
 
@@ -324,8 +512,118 @@ double calc_chi2(TH2D* h_data, TH2D* h_model)
 // chi2 2D with systematics
 ///////////////////////////////////////////////////////////////////////////////
 
-double calc_chi2(TH2D* h_data, TH2D* h_model, std::vector<double> sys)
+double calc_chi2(TH2D* h_data,
+    TH2D* h_model,
+    const std::vector<double> &sys1,
+    const std::vector<double> &sys2)
 {
+    
+    std::vector<double> delta; // d - m
+    std::vector<double> sigma; // sigma i
+
+    int count = 0;
+    int count_sqrt = 0;
+    for(Int_t j = 1; j <= h_model->GetNbinsY(); ++ j)
+    {
+        for(Int_t i = 1; i <= h_model->GetNbinsX(); ++ i)
+        {
+            double content_model = h_model->GetBinContent(i);
+            double content_data = h_data->GetBinContent(i);
+            double error_model = std::sqrt(content_model);
+            
+            sigma.push_back(error_model);
+
+            if(content_model == 0.0) continue;
+            ++ count;
+
+            delta.push_back(content_data - content_model);
+        }
+    }
+    TMatrixD *matrix = new TMatrixD(count, count);
+
+    for(Int_t i = 1; i <= h_model->GetNbinsX(); ++ i)
+    {
+        double content_model = h_model->GetBinContent(i);
+        if(content_model > 0.0) ++ count_sqrt;
+    }
+    
+
+    {
+        int l = 0;
+        for(int ll = 1; ll <= h_model->GetNbinsY(); ++ ll)
+        {
+            int k = 0;
+            for(int kk = 1; kk <= h_model->GetNbinsX(); ++ kk)
+            {
+                if(h_model->GetBinContent(kk, ll) <= 0.0) continue; 
+
+                int j = 0;
+                for(int jj = 1; jj <= h_model->GetNbinsY(); ++ jj)
+                //for(int j = 0; j < matrix->GetNrows(); ++ j)
+                {
+                    int i = 0;
+                    for(int ii = 1; ii <= h_model->GetNbinsX(); ++ ii)
+                    //for(int i = 0; i < matrix->GetNcols(); ++ i)
+                    {
+                        if(h_model->GetBinContent(ii, jj) <= 0.0) continue;
+
+                        double c = 0.0;
+                        if((i == k) && (j == l))
+                        {
+                            double sigma_i = sigma.at((ii - 1) + h_model->GetNbinsX() * (jj - 1));
+                            double sigma_j = sigma.at((kk - 1) + h_model->GetNbinsX() * (ll - 1));
+                            c += sigma_i * sigma_j;
+                        }
+                        int index_i = (ii - 1) + h_model->GetNbinsX() * (jj - 1);
+                        int index_j = (kk - 1) + h_model->GetNbinsX() * (kk - 1);
+                        double alpha_i = sys1.at(index_i);
+                        double alpha_j = sys1.at(index_j);
+                        c += alpha_i * alpha_j;
+                        alpha_i = sys2.at(index_i);
+                        alpha_j = sys2.at(index_j);
+                        c += alpha_i * alpha_j;
+
+                        //std::cout << "j=" << j << " i=" << i << " " << c << std::endl;
+                        matrix->operator[](k + count_sqrt * l).operator[](i + count_sqrt * j) = c;
+
+                        ++ i;
+                    }
+
+                    ++ j;
+                }
+
+                ++ k;
+            }
+
+            ++ l;
+        }
+
+    }
+    matrix->Invert();
+
+    double chi2 = 0.0;
+    for(int j = 0; j < matrix->GetNrows(); ++ j)
+    {
+        for(int i = 0; i < matrix->GetNcols(); ++ i)
+        {
+            double v_i = delta.at(i);
+            double V_ij = matrix->operator[](j).operator[](i);
+            double v_j = delta.at(j);
+            chi2 += v_i * V_ij * v_j;
+        }
+    }
+
+    return chi2;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// chi2 2D
+///////////////////////////////////////////////////////////////////////////////
+
+double calc_chi2(TH2D* h_data, TH2D* h_model)
+{
+    throw "todo";
     double chi2 = 0.0;
     for(Int_t j = 1; j <= h_model->GetNbinsX(); ++ j)
     {
@@ -345,6 +643,256 @@ double calc_chi2(TH2D* h_data, TH2D* h_model, std::vector<double> sys)
     return chi2;
 }
 
+
+void reset_systematic_arrays()
+{
+
+    //V_PHYS_SYS_CH0.clear();
+    //V_PHYS_SYS_CH1.clear();
+    //V_PHYS_SYS_CH10.clear();
+
+    alpha_coeff_ch0_sys1.clear();
+    alpha_coeff_ch0_sys2.clear();
+    alpha_coeff_ch1_sys1.clear();
+    alpha_coeff_ch1_sys2.clear();
+    alpha_coeff_ch10_sys1.clear();
+    alpha_coeff_ch10_sys2.clear();
+
+    chi2_SYS_CH0.clear();
+    chi2_SYS_CH1.clear();
+    chi2_SYS_CH10.clear();
+
+    /*
+    for(int c = 0; c < N_BINS_CH0 * N_BINS_CH0; ++ c)
+    {
+        V_PHYS_SYS_CH0.push_back(0.0);
+    }
+    for(int c = 0; c < N_BINS_CH1 * N_BINS_CH1; ++ c)
+    {
+        V_PHYS_SYS_CH1.push_back(0.0);
+    }
+    for(int c = 0; c < N_BINS_CH10 * N_BINS_CH10 * N_BINS_CH10 * N_BINS_CH10; ++ c)
+    {
+        V_PHYS_SYS_CH10.push_back(0.0);
+    }
+    */
+    
+    for(int c = 0; c < N_BINS_CH0; ++ c)
+    {
+        alpha_coeff_ch0_sys1.push_back(0.0);
+        alpha_coeff_ch0_sys2.push_back(0.0);
+    }
+    for(int c = 0; c < N_BINS_CH1; ++ c)
+    {
+        alpha_coeff_ch1_sys1.push_back(0.0);
+        alpha_coeff_ch1_sys2.push_back(0.0);
+    }
+    for(int c = 0; c < N_BINS_CH10 * N_BINS_CH10; ++ c)
+    {
+        alpha_coeff_ch10_sys1.push_back(0.0);
+        alpha_coeff_ch10_sys2.push_back(0.0);
+    }
+
+
+    for(int c = 0; c < N_BINS_CH0; ++ c)
+    {
+        chi2_SYS_CH0.push_back(0.0);
+    }
+    for(int c = 0; c < N_BINS_CH1; ++ c)
+    {
+        chi2_SYS_CH1.push_back(0.0);
+    }
+    for(int c = 0; c < N_BINS_CH10 * N_BINS_CH10; ++ c)
+    {
+        chi2_SYS_CH10.push_back(0.0);
+    }
+}
+
+void systematic_arrays_add(std::vector<double> &alpha_coeff_ch0,
+                           std::vector<double> &alpha_coeff_ch1,
+                           std::vector<double> &alpha_coeff_ch10)
+{
+
+    ///////////////////////////////////////////////////////////////////////////
+    // ch0
+    ///////////////////////////////////////////////////////////////////////////
+
+    /*
+    for(Int_t j = 1; j <= N_BINS_CH0; ++ j)
+    {
+        for(Int_t i = 1; i <= N_BINS_CH0; ++ i)
+        {
+            double alpha_i = h_ch0_HSD_sys->GetBinContent(i) - h_ch0_HSD->GetBinContent(i);
+            double alpha_j = h_ch0_HSD_sys->GetBinContent(j) - h_ch0_HSD->GetBinContent(j);
+            V_PHYS_SYS_CH0.at((i - 1) + (j - 1) * N_BINS_CH0) += alpha_i * alpha_j;
+        }
+    }
+    */
+
+    for(Int_t i = 1; i <= N_BINS_CH0; ++ i)
+    {
+        double alpha_i = h_ch0_HSD_sys->GetBinContent(i) - h_ch0_HSD->GetBinContent(i);
+        alpha_coeff_ch0.at(i - 1) = alpha_i;
+    }
+
+    for(Int_t i = 1; i <= N_BINS_CH0; ++ i)
+    {
+        double delta = h_ch0_HSD_sys->GetBinContent(i) - h_ch0_HSD->GetBinContent(i);
+        //std::cout << "delta=" << delta << std::endl;
+        chi2_SYS_CH0.at(i - 1) += std::abs(delta);
+    }
+
+
+    ///////////////////////////////////////////////////////////////////////////
+    // ch1
+    ///////////////////////////////////////////////////////////////////////////
+
+    /*
+    for(Int_t j = 1; j <= N_BINS_CH1; ++ j)
+    {
+        for(Int_t i = 1; i <= N_BINS_CH1; ++ i)
+        {
+            double alpha_i = h_ch1_HSD_sys->GetBinContent(i) - h_ch1_HSD->GetBinContent(i);
+            double alpha_j = h_ch1_HSD_sys->GetBinContent(j) - h_ch1_HSD->GetBinContent(j);
+            V_PHYS_SYS_CH1.at((i - 1) + (j - 1) * N_BINS_CH1) += alpha_i * alpha_j;
+        }
+    }
+    */
+
+    for(Int_t i = 1; i <= N_BINS_CH1; ++ i)
+    {
+        double alpha_i = h_ch1_HSD_sys->GetBinContent(i) - h_ch1_HSD->GetBinContent(i);
+        alpha_coeff_ch1.at(i - 1) = alpha_i;
+    }
+
+    for(Int_t i = 1; i <= N_BINS_CH1; ++ i)
+    {
+        double delta = h_ch1_HSD_sys->GetBinContent(i) - h_ch1_HSD->GetBinContent(i);
+        chi2_SYS_CH1.at(i - 1) += std::abs(delta);
+    }
+    
+
+    ///////////////////////////////////////////////////////////////////////////
+    // ch10
+    ///////////////////////////////////////////////////////////////////////////
+
+    /*
+    for(Int_t l = 1; l <= N_BINS_CH10; ++ l)
+    {
+        for(Int_t k = 1; k <= N_BINS_CH10; ++ k)
+        {
+            for(Int_t j = 1; j <= N_BINS_CH10; ++ j)
+            {
+                for(Int_t i = 1; i <= N_BINS_CH10; ++ i)
+                {
+                    double alpha_i = h_ch10_HSD_sys->GetBinContent(i, j) - h_ch10_HSD->GetBinContent(i, j);
+                    double alpha_k = h_ch10_HSD_sys->GetBinContent(k, l) - h_ch10_HSD->GetBinContent(k, l);
+                    int output_index = (i - 1)
+                                     + N_BINS_CH10 * (j - 1)
+                                     + N_BINS_CH10 * N_BINS_CH10 * (k - 1)
+                                     + N_BINS_CH10 * N_BINS_CH10 * N_BINS_CH10 * (l - 1);
+                    V_PHYS_SYS_CH10.at(output_index) += alpha_i * alpha_k;
+                }
+            }
+        }
+    }
+    */
+
+    for(Int_t j = 1; j <= N_BINS_CH10; ++ j)
+    {
+        for(Int_t i = 1; i <= N_BINS_CH10; ++ i)
+        {
+            double alpha_i = h_ch10_HSD_sys->GetBinContent(i, j) - h_ch10_HSD->GetBinContent(i, j);
+            alpha_coeff_ch10.at((i - 1) + N_BINS_CH10 * (j - 1)) = alpha_i;
+        }
+    }
+
+    for(Int_t j = 1; j <= N_BINS_CH10; ++ j)
+    {
+        for(Int_t i = 1; i <= N_BINS_CH10; ++ i)
+        {
+            double delta = h_ch10_HSD_sys->GetBinContent(i, j) - h_ch10_HSD->GetBinContent(i, j);
+            chi2_SYS_CH10.at((i - 1) + N_BINS_CH10 * (j - 1)) += std::abs(delta);
+        }
+    }
+
+}
+
+
+void reinit_all(const double N_events)
+{
+
+
+    flag_rebuild_ch0_HSD = true;
+    flag_rebuild_ch0_SSD = true;
+    flag_rebuild_ch0_HSD_sys = false;
+
+    flag_rebuild_ch1_HSD = true;
+    flag_rebuild_ch1_SSD = true;
+    flag_rebuild_ch1_HSD_sys = false;
+
+    flag_rebuild_ch10_HSD = true;
+    flag_rebuild_ch10_SSD = true;
+    flag_rebuild_ch10_HSD_sys = false;
+
+    reset_systematic_arrays();
+    rebuild_histograms(N_events);
+
+
+
+    flag_rebuild_ch0_HSD = false;
+    flag_rebuild_ch0_SSD = false;
+    flag_rebuild_ch0_HSD_sys = true;
+
+    flag_rebuild_ch1_HSD = false;
+    flag_rebuild_ch1_SSD = false;
+    flag_rebuild_ch1_HSD_sys = true;
+
+    flag_rebuild_ch10_HSD = false;
+    flag_rebuild_ch10_SSD = false;
+    flag_rebuild_ch10_HSD_sys = true;
+
+    gSYS_efficiency = 5.55e-2;
+    rebuild_histograms(N_events);
+    gSYS_efficiency = 0.0;
+    systematic_arrays_add(alpha_coeff_ch0_sys1,
+                          alpha_coeff_ch1_sys1,
+                          alpha_coeff_ch10_sys1);
+    
+
+/*
+    flag_rebuild_ch0_HSD = false;
+    flag_rebuild_ch0_SSD = false;
+    flag_rebuild_ch0_HSD_sys = true;
+
+    flag_rebuild_ch1_HSD = false;
+    flag_rebuild_ch1_SSD = false;
+    flag_rebuild_ch1_HSD_sys = true;
+
+    flag_rebuild_ch10_HSD = false;
+    flag_rebuild_ch10_SSD = false;
+    flag_rebuild_ch10_HSD_sys = true; 
+
+    gSYS_coherent_energy_shift = 0.2e-2;
+    rebuild_histograms(N_events);
+    gSYS_coherent_energy_shift = 0.0;
+    systematic_arrays_add(alpha_coeff_ch0_sys2,
+                          alpha_coeff_ch1_sys2,
+                          alpha_coeff_ch10_sys2); 
+*/
+
+    flag_rebuild_ch0_HSD = true;
+    flag_rebuild_ch0_SSD = true;
+    flag_rebuild_ch0_HSD_sys = false;
+
+    flag_rebuild_ch1_HSD = true;
+    flag_rebuild_ch1_SSD = true;
+    flag_rebuild_ch1_HSD_sys = false;
+
+    flag_rebuild_ch10_HSD = true;
+    flag_rebuild_ch10_SSD = true;
+    flag_rebuild_ch10_HSD_sys = false;
+}
 
 
 int main()
@@ -357,42 +905,132 @@ int main()
 
     load_psf_data();
     
-    rebuild_histograms();
+    //rebuild_histograms();
 
-    TCanvas *c = new TCanvas("c", "c");
-    h_ch10_HSD->Draw("colz");
+    //TCanvas *c = new TCanvas("c", "c");
+    //h_ch10_HSD->Draw("colz");
     //h_ch10_SSD->Draw("colz");
+
+    
+
+    ///////////////////////////////////////////////////////////////////////////
+    // construct systematics
+    ///////////////////////////////////////////////////////////////////////////
+/*
+    reset_systematic_arrays();
+
+    flag_rebuild_ch0_HSD = false;
+    flag_rebuild_ch0_SSD = false;
+    flag_rebuild_ch0_HSD_sys = true;
+
+    flag_rebuild_ch1_HSD = false;
+    flag_rebuild_ch1_SSD = false;
+    flag_rebuild_ch1_HSD_sys = true;
+
+    flag_rebuild_ch10_HSD = false;
+    flag_rebuild_ch10_SSD = false;
+    flag_rebuild_ch10_HSD_sys = true;
+
+    gSYS_efficiency = 5.55e-2;
+    rebuild_histograms();
+    systematic_arrays_add();
+    
+    gSYS_efficiency = 0.0;
+    gSYS_coherent_energy_shift = 0.2e-2;
+    rebuild_histograms();
+    systematic_arrays_add(); 
+
+    gSYS_coherent_energy_shift = 0.0;
+
+    flag_rebuild_ch0_HSD = true;
+    flag_rebuild_ch0_SSD = true;
+    flag_rebuild_ch0_HSD_sys = false;
+
+    flag_rebuild_ch1_HSD = true;
+    flag_rebuild_ch1_SSD = true;
+    flag_rebuild_ch1_HSD_sys = false;
+
+    flag_rebuild_ch10_HSD = true;
+    flag_rebuild_ch10_SSD = true;
+    flag_rebuild_ch10_HSD_sys = false;
+*/
+//    rebuild_histograms();
+    // already done
+
+    
+
 
 
     // draw total E for 3, 4 bins
-    N_BINS_CH0 = 3;
-    rebuild_histograms();
-    const int N_events = N2e;
-    h_ch0_HSD->Scale(N_events / h_ch0_HSD->Integral());
-    h_ch0_SSD->Scale(N_events / h_ch0_SSD->Integral());
-    h_ch1_HSD->Scale(2.0 * N_events / h_ch1_HSD->Integral());
-    h_ch1_SSD->Scale(2.0 * N_events / h_ch1_SSD->Integral());
-    h_ch10_HSD->Scale(N_events / h_ch10_HSD->Integral());
-    h_ch10_SSD->Scale(N_events / h_ch10_SSD->Integral());
-    new TCanvas;
-    h_ch0_HSD->Draw("hist");
-    h_ch0_SSD->Draw("histsame");
 
-    N_BINS_CH0 = 4;
-    rebuild_histograms();
-    h_ch0_HSD->Scale(N_events / h_ch0_HSD->Integral());
-    h_ch0_SSD->Scale(N_events / h_ch0_SSD->Integral());
-    h_ch1_HSD->Scale(2.0 * N_events / h_ch1_HSD->Integral());
-    h_ch1_SSD->Scale(2.0 * N_events / h_ch1_SSD->Integral());
-    h_ch10_HSD->Scale(N_events / h_ch10_HSD->Integral());
-    h_ch10_SSD->Scale(N_events / h_ch10_SSD->Integral());
-    new TCanvas;
-    h_ch0_HSD->Draw("hist");
-    h_ch0_SSD->Draw("histsame");
+    int N_BINS_MIN = 1;
+    int N_BINS_MAX = 100;
+    TGraph *g_chi2_ch0 = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
+    TGraph *g_chi2_ch1 = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
+    TGraph *g_chi2_ch10 = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
+    int i = 0;
+    for(int N_BINS = N_BINS_MIN; N_BINS <= N_BINS_MAX; ++ N_BINS)
+    {
+        N_BINS_CH0 = N_BINS;
+        N_BINS_CH1 = N_BINS;
+        N_BINS_CH10 = N_BINS;
+
+        reinit_all(N2e);
+        double chi2_ch0 = calc_chi2(h_ch0_SSD, h_ch0_HSD, alpha_coeff_ch0_sys1, alpha_coeff_ch0_sys2);
+        double chi2_ch1 = calc_chi2(h_ch1_SSD, h_ch1_HSD, alpha_coeff_ch1_sys1, alpha_coeff_ch1_sys2);
+        double chi2_ch10 = calc_chi2(h_ch10_SSD, h_ch10_HSD, alpha_coeff_ch10_sys1, alpha_coeff_ch10_sys2);
+
+        TString fns_ch0;
+        fns_ch0.Form("CH0_%d_bins", N_BINS_CH0);
+        draw_hist_ratio_pull(h_ch0_SSD, h_ch0_HSD, &chi2_SYS_CH0, fns_ch0);
+
+        TString fns_ch1;
+        fns_ch1.Form("CH1_%d_bins", N_BINS_CH0);
+        draw_hist_ratio_pull(h_ch1_SSD, h_ch1_HSD, &chi2_SYS_CH1, fns_ch1);
+
+        g_chi2_ch0->SetPoint(i, (double)N_BINS, chi2_ch0);
+        g_chi2_ch1->SetPoint(i, (double)N_BINS, chi2_ch1);
+        g_chi2_ch10->SetPoint(i, (double)N_BINS, chi2_ch10);
+
+        ++ i;
+    }
+    g_chi2_ch0->SetLineColor(kRed);
+    g_chi2_ch1->SetLineColor(kGreen);
+    g_chi2_ch10->SetLineColor(kBlue);
+    g_chi2_ch0->SetLineWidth(2.0);
+    g_chi2_ch1->SetLineWidth(2.0);
+    g_chi2_ch10->SetLineWidth(2.0);
+    
+    TCanvas *c_chi2 = new TCanvas("c_chi2", "c_chi2");
+    c_chi2->SetLogy();
+    //g_chi2_ch10->SetMinimum(1.0e-3);
+    //g_chi2_ch10->SetMaximum(1.0e+4);
+    g_chi2_ch10->SetTitle(0);
+    g_chi2_ch10->Draw("al");
+    g_chi2_ch0->Draw("l");
+    g_chi2_ch1->Draw("l");
+
+
+
+    if(0)
+    {
+        N_BINS_CH0 = 4;
+        reinit_all(N2e);
+        std::cout << "chi2=" << calc_chi2(h_ch0_SSD, h_ch0_HSD, alpha_coeff_ch0_sys1, alpha_coeff_ch0_sys2) << std::endl;
+        //rebuild_histograms();
+//        h_ch0_HSD->Scale(N_events / h_ch0_HSD->Integral());
+//        h_ch0_SSD->Scale(N_events / h_ch0_SSD->Integral());
+//        h_ch1_HSD->Scale(2.0 * N_events / h_ch1_HSD->Integral());
+//        h_ch1_SSD->Scale(2.0 * N_events / h_ch1_SSD->Integral());
+//        h_ch10_HSD->Scale(N_events / h_ch10_HSD->Integral());
+//        h_ch10_SSD->Scale(N_events / h_ch10_SSD->Integral());
+        draw_hist_ratio_pull(h_ch0_SSD, h_ch0_HSD, &chi2_SYS_CH0, "CH0_4bins");
+    }
 
 
 
 
+    #if 0
     if(0)
     {
         int N_BINS_MIN = 1;
@@ -407,14 +1045,14 @@ int main()
             N_BINS_CH1 = n_bins;    
             N_BINS_CH10 = n_bins;    
             
-            rebuild_histograms();
             const int N_events = N2e;
-            h_ch0_HSD->Scale(N_events / h_ch0_HSD->Integral());
-            h_ch0_SSD->Scale(N_events / h_ch0_SSD->Integral());
-            h_ch1_HSD->Scale(2.0 * N_events / h_ch1_HSD->Integral());
-            h_ch1_SSD->Scale(2.0 * N_events / h_ch1_SSD->Integral());
-            h_ch10_HSD->Scale(N_events / h_ch10_HSD->Integral());
-            h_ch10_SSD->Scale(N_events / h_ch10_SSD->Integral());
+            rebuild_histograms(N_events);
+            //h_ch0_HSD->Scale(N_events / h_ch0_HSD->Integral());
+            //h_ch0_SSD->Scale(N_events / h_ch0_SSD->Integral());
+            //h_ch1_HSD->Scale(2.0 * N_events / h_ch1_HSD->Integral());
+            //h_ch1_SSD->Scale(2.0 * N_events / h_ch1_SSD->Integral());
+            //h_ch10_HSD->Scale(N_events / h_ch10_HSD->Integral());
+            //h_ch10_SSD->Scale(N_events / h_ch10_SSD->Integral());
 
             double chi2_ch0 = calc_chi2(h_ch0_SSD, h_ch0_HSD);
             double chi2_ch1 = calc_chi2(h_ch1_SSD, h_ch1_HSD);
@@ -442,16 +1080,17 @@ int main()
         g_chi2_ch0->Draw("l");
         g_chi2_ch1->Draw("l");
     }
-
+    #endif
 
     
     Int_t N_BINS_CH0 = 40;
     Int_t N_BINS_CH1 = 40;
     Int_t N_BINS_CH10 = 40;
-    rebuild_histograms();
+    //rebuild_histograms(N2e);
 
 
     // draw chi2 as a function of number of events
+    #if 0
     if(0)
     {   
         double N_events_min = 100;
@@ -508,6 +1147,7 @@ int main()
         g_chi2_ch0->Draw("l");
         g_chi2_ch1->Draw("l");
     }
+    #endif
 
 
     return 0;
