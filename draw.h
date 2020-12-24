@@ -239,7 +239,7 @@ void draw_hist_ratio_pull(
     // create pads
     ///////////////////////////////////////////////////////////////////////////
 
-    TCanvas *canvas = new TCanvas("canvas", "canvas");
+    TCanvas *canvas = new TCanvas(filename, filename);
     canvas->SetFillColor(kWhite);
     
     TPad *pad0 = new TPad("pad0", "pad0", 0.0, 0.5, 1.0, 1.0);

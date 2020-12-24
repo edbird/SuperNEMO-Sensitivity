@@ -978,7 +978,7 @@ int main()
         reinit_all(N2e);
         double chi2_ch0 = calc_chi2(h_ch0_SSD, h_ch0_HSD, alpha_coeff_ch0_sys1, alpha_coeff_ch0_sys2);
         double chi2_ch1 = calc_chi2(h_ch1_SSD, h_ch1_HSD, alpha_coeff_ch1_sys1, alpha_coeff_ch1_sys2);
-        double chi2_ch10 = calc_chi2(h_ch10_SSD, h_ch10_HSD, alpha_coeff_ch10_sys1, alpha_coeff_ch10_sys2);
+        double chi2_ch10 = 0.0; // calc_chi2(h_ch10_SSD, h_ch10_HSD, alpha_coeff_ch10_sys1, alpha_coeff_ch10_sys2);
 
         TString fns_ch0;
         fns_ch0.Form("CH0_%d_bins", N_BINS_CH0);
