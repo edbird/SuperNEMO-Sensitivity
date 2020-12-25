@@ -1,6 +1,6 @@
 
 
-
+const double VERYSMALL = 1.0e-12;
 
 const double G0_ps_integral_MeV = 0.331909E-46;
 const double G0_ps_integral_yrinv = 0.159132E-17;
@@ -446,7 +446,7 @@ double calc_chi2(
         double content_model = h_model->GetBinContent(i);
         double content_data = h_data->GetBinContent(i);
         double error_model = std::sqrt(content_model);
-        if(content_model == 0.0) continue;
+        if(content_model <= VERYSMALL) continue;
 
         delta.push_back(content_data - content_model);
         sigma.push_back(error_model);
@@ -458,13 +458,13 @@ double calc_chi2(
         for(int jj = 1; jj <= h_model->GetNbinsX(); ++ jj)
         //for(int j = 0; j < matrix->GetNrows(); ++ j)
         {
-            if(h_model->GetBinContent(jj) <= 0.0) continue; 
+            if(h_model->GetBinContent(jj) <= VERYSMALL) continue; 
 
             int i = 0;
             for(int ii = 1; ii <= h_model->GetNbinsX(); ++ ii)
             //for(int i = 0; i < matrix->GetNcols(); ++ i)
             {
-                if(h_model->GetBinContent(ii) <= 0.0) continue;
+                if(h_model->GetBinContent(ii) <= VERYSMALL) continue;
 
                 double c = 0.0;
                 if(i == j)
@@ -483,6 +483,11 @@ double calc_chi2(
                 //std::cout << "j=" << j << " i=" << i << " " << c << std::endl;
                 matrix->operator[](j).operator[](i) = c;
 
+                //if(i == j)
+                //{
+                //    std::cout << "diagonal: i=" << i << " " << c << std::endl;
+                //}
+
                 ++ i;
             }
 
@@ -500,6 +505,7 @@ double calc_chi2(
             double v_i = delta.at(i);
             double V_ij = matrix->operator[](j).operator[](i);
             double v_j = delta.at(j);
+            //std::cout << "i=" << i << " j=" << j << " v_i=" << v_i << " V_ij=" << V_ij << " v_j=" << v_j << std::endl;
             chi2 += v_i * V_ij * v_j;
         }
     }
@@ -976,17 +982,19 @@ int main()
         N_BINS_CH10 = N_BINS;
 
         reinit_all(N2e);
+        //std::cout << "***** CALC CHI2 CH0 ******" << std::endl;
         double chi2_ch0 = calc_chi2(h_ch0_SSD, h_ch0_HSD, alpha_coeff_ch0_sys1, alpha_coeff_ch0_sys2);
+        //std::cout << "***** CALC CHI2 CH1 ******" << std::endl;
         double chi2_ch1 = calc_chi2(h_ch1_SSD, h_ch1_HSD, alpha_coeff_ch1_sys1, alpha_coeff_ch1_sys2);
         double chi2_ch10 = 0.0; // calc_chi2(h_ch10_SSD, h_ch10_HSD, alpha_coeff_ch10_sys1, alpha_coeff_ch10_sys2);
 
         TString fns_ch0;
         fns_ch0.Form("CH0_%d_bins", N_BINS_CH0);
-        draw_hist_ratio_pull(h_ch0_SSD, h_ch0_HSD, &chi2_SYS_CH0, fns_ch0);
+        draw_hist_ratio_pull(0, h_ch0_SSD, h_ch0_HSD, &chi2_SYS_CH0, fns_ch0, "CH0", chi2_ch0);
 
         TString fns_ch1;
         fns_ch1.Form("CH1_%d_bins", N_BINS_CH0);
-        draw_hist_ratio_pull(h_ch1_SSD, h_ch1_HSD, &chi2_SYS_CH1, fns_ch1);
+        draw_hist_ratio_pull(1, h_ch1_SSD, h_ch1_HSD, &chi2_SYS_CH1, fns_ch1, "CH1", chi2_ch1);
 
         g_chi2_ch0->SetPoint(i, (double)N_BINS, chi2_ch0);
         g_chi2_ch1->SetPoint(i, (double)N_BINS, chi2_ch1);
@@ -1010,6 +1018,13 @@ int main()
     g_chi2_ch0->Draw("l");
     g_chi2_ch1->Draw("l");
 
+    TFile *fgraph = new TFile("fgraph.root", "RECREATE");
+    g_chi2_ch0->SetName("g_ch0");
+    g_chi2_ch0->Write();
+    g_chi2_ch1->SetName("g_ch1");
+    g_chi2_ch1->Write();
+    g_chi2_ch10->SetName("g_ch10");
+    g_chi2_ch10->Write();
 
 
     if(0)
@@ -1024,7 +1039,7 @@ int main()
 //        h_ch1_SSD->Scale(2.0 * N_events / h_ch1_SSD->Integral());
 //        h_ch10_HSD->Scale(N_events / h_ch10_HSD->Integral());
 //        h_ch10_SSD->Scale(N_events / h_ch10_SSD->Integral());
-        draw_hist_ratio_pull(h_ch0_SSD, h_ch0_HSD, &chi2_SYS_CH0, "CH0_4bins");
+        draw_hist_ratio_pull(0, h_ch0_SSD, h_ch0_HSD, &chi2_SYS_CH0, "CH0_4bins", ".", 0.0);
     }
 
 

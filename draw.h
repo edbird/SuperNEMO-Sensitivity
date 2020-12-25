@@ -3,10 +3,13 @@
 
 
 void draw_hist_ratio_pull(
+    const int channel,
     TH1D* h_data,
     TH1D* h_model,
     std::vector<double> *chi2_sys,
-    const TString &filename)
+    const TString &filename,
+    const TString &filedir,
+    const double chi2)
 {
 
     const Int_t kGrey = kGray;
@@ -51,16 +54,16 @@ void draw_hist_ratio_pull(
         h_data->SetBinError(i, total_data_error);
     }
 
-    double chi2 = 0.0;
+    double chi2_other = 0.0;
     for(Int_t i = 1; i <= h_model->GetNbinsX(); ++ i)
     {
         if(h_model->GetBinContent(i) <= 0.0) continue;
         double e = h_model->GetBinError(i);
         double d = h_data->GetBinContent(i) - h_model->GetBinContent(i);
         double chi = std::pow(d / e, 2.0);
-        chi2 += chi;
+        chi2_other += chi;
     }
-    std::cout << __func__ << " chi2=" << chi2 << std::endl;
+    std::cout << __func__ << " chi2_other=" << chi2_other << std::endl;
 
     const int n_bins_x = h_data->GetNbinsX();
     const double low = h_data->GetXaxis()->GetBinLowEdge(1);
@@ -98,44 +101,145 @@ void draw_hist_ratio_pull(
     std::map<int, double> axismaxmap;
     for(int i = 1; i <= 100; ++ i)
     {
-        if(i == 1)
+        if(channel == 0)
         {
-            axismaxmap[i] = 1.2e+06;
+            if(i == 1)
+            {
+                axismaxmap[i] = 1.2e+06;
+            }
+            else if(i == 2)
+            {
+                axismaxmap[i] = 1.0e+06;
+            }
+            else if(i == 3)
+            {
+                axismaxmap[i] = 800.0e+03;
+            }
+            else if(i == 4)
+            {
+                axismaxmap[i] = 700.0e+03;
+            }
+            else if(i <= 6)
+            {
+                axismaxmap[i] = 500.0e+03;
+            }
+            else if(i == 7)
+            {
+                axismaxmap[i] = 400.0e+03;
+            }
+            else if(i == 8)
+            {
+                axismaxmap[i] = 350.0e+03;
+            }
+            else if(i <= 10)
+            {
+                axismaxmap[i] = 300.0e+03;
+            }
+            else if(i <= 13)
+            {
+                axismaxmap[i] = 250.0e+03;
+            }
+            else if(i <= 17)
+            {
+                axismaxmap[i] = 200.0e+03;
+            }
+            else if(i <= 24)
+            {
+                axismaxmap[i] = 150.0e+03;
+            }
+            else if(i <= 28)
+            {
+                axismaxmap[i] = 120.0e+03;
+            }
+            else if(i <= 60)
+            {
+                axismaxmap[i] = 100.0e+03;
+            }
+            else
+            {
+                axismaxmap[i] = 50.0e+03;
+            }
         }
-        else if(i == 2)
+        else if(channel == 1)
         {
-            axismaxmap[i] = 1.0e+06;
-        }
-        else if(i == 3)
-        {
-            axismaxmap[i] = 800.0e+03;
-        }
-        else if(i == 4)
-        {
-            axismaxmap[i] = 700.0e+03;
-        }
-        else if(i <= 6)
-        {
-            axismaxmap[i] = 500.0e+03;
-        }
-        else if(i == 7)
-        {
-            axismaxmap[i] = 400.0e+03;
-        }
-        else if(i <= 10)
-        {
-            axismaxmap[i] = 350.0e+03;
+            if(i == 1)
+            {
+                axismaxmap[i] = 2.5e+06;
+            }
+            else if(i == 2)
+            {
+                axismaxmap[i] = 2.5e+06;
+            }
+            else if(i == 3)
+            {
+                axismaxmap[i] = 2.0e+06;
+            }
+            else if(i == 4)
+            {
+                axismaxmap[i] = 1800.0e+03;
+            }
+            else if(i == 5)
+            {
+                axismaxmap[i] = 1500.0e+03;
+            }
+            else if(i == 6)
+            {
+                axismaxmap[i] = 1200.0e+03;
+            }
+            else if(i == 7)
+            {
+                axismaxmap[i] = 1200.0e+03;
+            }
+            else if(i <= 9)
+            {
+                axismaxmap[i] = 1000.0e+03;
+            }
+            else if(i <= 14)
+            {
+                axismaxmap[i] = 800.0e+03;
+            }
+            else if(i <= 19)
+            {
+                axismaxmap[i] = 500.0e+03;
+            }
+            else if(i <= 25)
+            {
+                axismaxmap[i] = 400.0e+03;
+            }
+            else if(i <= 30)
+            {
+                axismaxmap[i] = 300.0e+03;
+            }
+            else
+            {
+                axismaxmap[i] = 200.0e+03;
+            }
         }
         else
         {
-            axismaxmap[i] = 350.0e+03;
+            axismaxmap[i] = 1.0e+06;
         }
     }
 
-    const double PAD_L_Y_MAX = 2.0;
-    const double PAD_L_Y_MIN = -2.0;
-    const double PAD_M_Y_MAX = 1.5;
-    const double PAD_M_Y_MIN = 0.5;
+    double PAD_L_Y_MAX = 1.0;
+    double PAD_L_Y_MIN = -1.0;
+    if(channel == 0)
+    {
+        PAD_L_Y_MAX = 1.5;
+        PAD_L_Y_MIN = -1.5;
+    }
+    else
+    {
+        PAD_L_Y_MAX = 5.0;
+        PAD_L_Y_MIN = -5.0;
+    }
+    double PAD_M_Y_MAX = 1.5;
+    double PAD_M_Y_MIN = 0.5;
+    if(channel == 1)
+    {
+        PAD_M_Y_MAX = 4.0;
+        PAD_M_Y_MIN = 0.0;
+    }
     const double PAD_U_Y_MAX = axismaxmap[h_model->GetNbinsX()];
     const double PAD_U_Y_MIN = 0.0;
 
@@ -194,7 +298,7 @@ void draw_hist_ratio_pull(
 
     h_pull->GetYaxis()->SetTitleFont(43);
     h_pull->GetYaxis()->SetTitleSize(20);
-    h_pull->GetYaxis()->SetTitle("Pull (#sigma) ");
+    h_pull->GetYaxis()->SetTitle("Pull (#sigma)     ");
     h_pull->GetYaxis()->SetTitleOffset(1.0);
 
     // x title
@@ -312,29 +416,6 @@ void draw_hist_ratio_pull(
     h_pull->Draw("histsame");
 
 
-    ///////////////////////////////////////////////////////////////////////////
-    // legend
-    ///////////////////////////////////////////////////////////////////////////
-
-    pad0->cd();
-    
-    double lposx = 0.625;
-    double lposy = 0.65;
-    double lsizex = 0.30;
-    double lsizey = 0.30;
-    TLegend *leg = new TLegend(lposx, lposy, lposx + lsizex, lposy + lsizey);
-    TString text_data;
-    TString text_model;
-    text_data.Form("^{82}Se (HSD) [#xi_{31}=0?]");
-    text_model.Form("^{82}Se (SSD) [#xi_{31}=???]");
-    leg->AddEntry(h_data, text_data, "F");
-    leg->AddEntry(h_model, text_model, "F");
-    leg->SetBorderSize(5);
-    leg->SetShadowColor(kGray + 2);
-    leg->SetTextFont(63);
-    leg->SetTextSize(18);
-    leg->SetMargin(0.20);
-    leg->Draw("BL");
 
     
     ///////////////////////////////////////////////////////////////////////////
@@ -395,6 +476,32 @@ void draw_hist_ratio_pull(
     axis_l_y_1->Draw();
     axis_l_y_2->Draw();
 
+
+    ///////////////////////////////////////////////////////////////////////////
+    // legend
+    ///////////////////////////////////////////////////////////////////////////
+
+    pad0->cd();
+    
+    double lposx = 0.625;
+    double lposy = 0.65;
+    double lsizex = 0.30;
+    double lsizey = 0.30;
+    TLegend *leg = new TLegend(lposx, lposy, lposx + lsizex, lposy + lsizey);
+    TString text_data;
+    TString text_model;
+    text_data.Form("^{82}Se (HSD) [#xi_{31}=0?]");
+    text_model.Form("^{82}Se (SSD) [#xi_{31}=???]");
+    leg->AddEntry(h_data, text_data, "F");
+    leg->AddEntry(h_model, text_model, "F");
+    leg->SetBorderSize(5);
+    leg->SetShadowColor(kGray + 2);
+    leg->SetTextFont(63);
+    leg->SetTextSize(18);
+    leg->SetMargin(0.20);
+    leg->Draw("BL");
+
+
     ///////////////////////////////////////////////////////////////////////////
     // latex labels
     ///////////////////////////////////////////////////////////////////////////
@@ -410,17 +517,21 @@ void draw_hist_ratio_pull(
     s0.Form("SuperNEMO");
     latex.DrawLatex(0.15, 0.80, s0);
 
+    TString s1;
+    s1.Form("#chi^{2} = %.1f", chi2);
+    latex.DrawLatex(0.15, 0.70, s1);
+
     
     bool saveas_pdf = true;
     bool saveas_png = true;
     if(saveas_pdf)
     {
-        TString fname = filename + ".pdf";
+        TString fname = filedir + "/" + filename + ".pdf";
         canvas->SaveAs(fname);
     }
     if(saveas_png)
     {
-        TString fname = filename + ".png";
+        TString fname = filedir + "/" + filename + ".png";
         canvas->SaveAs(fname);
     }
 
