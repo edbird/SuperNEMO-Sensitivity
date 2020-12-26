@@ -37,19 +37,25 @@ void draw_hist_ratio_pull(
         double total_data_error = 0.0;
         if(content >= 0.0)
         {
-            total_error = std::sqrt(content);
+            //total_error = std::sqrt(content);
+            total_error = content;
         }
         if(content_data >= 0.0)
         {
-            total_data_error = std::sqrt(content_data);
+            //total_data_error = std::sqrt(content_data);
+            total_data_error = content_data;
         }
         if(chi2_sys != nullptr)
         {
             //total_error += std::sqrt(chi2_sys->at(i - 1));
+            //total_error += std::sqrt(chi2_sys->at(i - 1));
             total_error += chi2_sys->at(i - 1);
+            //total_data_error += std::sqrt(chi2_sys->at(i - 1));
             //total_data_error += std::sqrt(chi2_sys->at(i - 1));
             total_data_error += chi2_sys->at(i - 1);
         }
+        total_error = std::sqrt(total_error);
+        total_data_error = std::sqrt(total_data_error);
         h_model->SetBinError(i, total_error);
         h_data->SetBinError(i, total_data_error);
     }
@@ -59,9 +65,24 @@ void draw_hist_ratio_pull(
     {
         if(h_model->GetBinContent(i) <= 0.0) continue;
         double e = h_model->GetBinError(i);
-        double d = h_data->GetBinContent(i) - h_model->GetBinContent(i);
+        double data = h_data->GetBinContent(i);
+        double model = h_model->GetBinContent(i);
+        double d = data - model;
         double chi = std::pow(d / e, 2.0);
         chi2_other += chi;
+        /*
+        std::cout << "bin: i=" << i 
+                  << " chi2=" << chi
+                  << " = (( " << data
+                  << " - " << model
+                  << " ) / " << e
+                  << " )^2 =>> error composition: "
+                  << std::sqrt(model) * std::sqrt(model) << " + "
+                  << chi2_sys->at(i - 1)
+                  << " | model="  << model
+                  << " delta=" << d
+                  << std::endl;
+        */
     }
     std::cout << __func__ << " chi2_other=" << chi2_other << std::endl;
 
@@ -457,12 +478,15 @@ void draw_hist_ratio_pull(
     axis_u_y_1->ChangeLabel(1, 0, 0);
     axis_u_y_2->ChangeLabel(1, 0, 0);
     axis_u_y_2->ChangeLabel(-1, 0, 0);
-    axis_m_y_1->ChangeLabel(-1, 0, 0);
-    axis_m_y_2->ChangeLabel(-1, 0, 0);
-    axis_m_y_1->ChangeLabel(1, 0, 0);
-    axis_m_y_2->ChangeLabel(1, 0, 0);
-    axis_l_y_1->ChangeLabel(-1, 0, 0);
-    axis_l_y_2->ChangeLabel(-1, 0, 0);
+    if(channel == 0)
+    {
+        axis_m_y_1->ChangeLabel(-1, 0, 0);
+        axis_m_y_2->ChangeLabel(-1, 0, 0);
+        axis_m_y_1->ChangeLabel(1, 0, 0);
+        axis_m_y_2->ChangeLabel(1, 0, 0);
+    }
+//    axis_l_y_1->ChangeLabel(-1, 0, 0);
+//    axis_l_y_2->ChangeLabel(-1, 0, 0);
 
     pad0->cd();
     axis_u_y_1->Draw();

@@ -30,6 +30,12 @@ TH2D *h_psf_G2 = nullptr;
 
 
 
+
+bool g_CHI2_OFFDIAGZERO = false;
+bool g_CHI2_SYSZERO = false;
+
+
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 
@@ -69,6 +75,8 @@ std::vector<double> chi2_SYS_CH10;
 
 
 
+#include "calc_chi2.h"
+#include "calc_chi2_2d.h"
 #include "draw.h"
 
 
@@ -405,249 +413,6 @@ void rebuild_histograms(const double N_events)
 
 
 
-///////////////////////////////////////////////////////////////////////////////
-// chi2 1D
-///////////////////////////////////////////////////////////////////////////////
-
-double calc_chi2(TH1D* h_data, TH1D* h_model)
-{
-    double chi2 = 0.0;
-    for(Int_t i = 1; i <= h_model->GetNbinsY(); ++ i)
-    {
-        double content_model = h_model->GetBinContent(i);
-        double content_data = h_data->GetBinContent(i);
-        double error_model = std::sqrt(content_model);
-        if((content_model == 0.0) && (content_data == 0.0))
-        {
-            continue;
-        }
-        double chi = std::pow((content_data - content_model) / error_model, 2.0);
-        chi2 += chi;
-    }
-    return chi2;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// chi2 1D with systematics
-///////////////////////////////////////////////////////////////////////////////
-
-double calc_chi2(
-    TH1D* h_data,
-    TH1D* h_model,
-    const std::vector<double> &sys1,
-    const std::vector<double> &sys2)
-{
-    
-    std::vector<double> delta; // d - m
-    std::vector<double> sigma; // sigma i
-
-    for(Int_t i = 1; i <= h_model->GetNbinsX(); ++ i)
-    {
-        double content_model = h_model->GetBinContent(i);
-        double content_data = h_data->GetBinContent(i);
-        double error_model = std::sqrt(content_model);
-        if(content_model <= VERYSMALL) continue;
-
-        delta.push_back(content_data - content_model);
-        sigma.push_back(error_model);
-    }
-    TMatrixD *matrix = new TMatrixD(delta.size(), delta.size());
-
-    {
-        int j = 0;
-        for(int jj = 1; jj <= h_model->GetNbinsX(); ++ jj)
-        //for(int j = 0; j < matrix->GetNrows(); ++ j)
-        {
-            if(h_model->GetBinContent(jj) <= VERYSMALL) continue; 
-
-            int i = 0;
-            for(int ii = 1; ii <= h_model->GetNbinsX(); ++ ii)
-            //for(int i = 0; i < matrix->GetNcols(); ++ i)
-            {
-                if(h_model->GetBinContent(ii) <= VERYSMALL) continue;
-
-                double c = 0.0;
-                if(i == j)
-                {
-                    double sigma_i = sigma.at(i);
-                    double sigma_j = sigma.at(j);
-                    c += sigma_i * sigma_j;
-                }
-                double alpha_i = sys1.at(ii - 1);
-                double alpha_j = sys1.at(jj - 1);
-                c += alpha_i * alpha_j;
-                alpha_i = sys2.at(ii - 1);
-                alpha_j = sys2.at(jj - 1);
-                c += alpha_i * alpha_j;
-
-                //std::cout << "j=" << j << " i=" << i << " " << c << std::endl;
-                matrix->operator[](j).operator[](i) = c;
-
-                //if(i == j)
-                //{
-                //    std::cout << "diagonal: i=" << i << " " << c << std::endl;
-                //}
-
-                ++ i;
-            }
-
-            ++ j;
-        }
-
-    }
-    matrix->Invert();
-
-    double chi2 = 0.0;
-    for(int j = 0; j < matrix->GetNrows(); ++ j)
-    {
-        for(int i = 0; i < matrix->GetNcols(); ++ i)
-        {
-            double v_i = delta.at(i);
-            double V_ij = matrix->operator[](j).operator[](i);
-            double v_j = delta.at(j);
-            //std::cout << "i=" << i << " j=" << j << " v_i=" << v_i << " V_ij=" << V_ij << " v_j=" << v_j << std::endl;
-            chi2 += v_i * V_ij * v_j;
-        }
-    }
-
-    return chi2;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// chi2 2D with systematics
-///////////////////////////////////////////////////////////////////////////////
-
-double calc_chi2(TH2D* h_data,
-    TH2D* h_model,
-    const std::vector<double> &sys1,
-    const std::vector<double> &sys2)
-{
-    
-    std::vector<double> delta; // d - m
-    std::vector<double> sigma; // sigma i
-
-    int count = 0;
-    int count_sqrt = 0;
-    for(Int_t j = 1; j <= h_model->GetNbinsY(); ++ j)
-    {
-        for(Int_t i = 1; i <= h_model->GetNbinsX(); ++ i)
-        {
-            double content_model = h_model->GetBinContent(i);
-            double content_data = h_data->GetBinContent(i);
-            double error_model = std::sqrt(content_model);
-            
-            sigma.push_back(error_model);
-
-            if(content_model == 0.0) continue;
-            ++ count;
-
-            delta.push_back(content_data - content_model);
-        }
-    }
-    TMatrixD *matrix = new TMatrixD(count, count);
-
-    for(Int_t i = 1; i <= h_model->GetNbinsX(); ++ i)
-    {
-        double content_model = h_model->GetBinContent(i);
-        if(content_model > 0.0) ++ count_sqrt;
-    }
-    
-
-    {
-        int l = 0;
-        for(int ll = 1; ll <= h_model->GetNbinsY(); ++ ll)
-        {
-            int k = 0;
-            for(int kk = 1; kk <= h_model->GetNbinsX(); ++ kk)
-            {
-                if(h_model->GetBinContent(kk, ll) <= 0.0) continue; 
-
-                int j = 0;
-                for(int jj = 1; jj <= h_model->GetNbinsY(); ++ jj)
-                //for(int j = 0; j < matrix->GetNrows(); ++ j)
-                {
-                    int i = 0;
-                    for(int ii = 1; ii <= h_model->GetNbinsX(); ++ ii)
-                    //for(int i = 0; i < matrix->GetNcols(); ++ i)
-                    {
-                        if(h_model->GetBinContent(ii, jj) <= 0.0) continue;
-
-                        double c = 0.0;
-                        if((i == k) && (j == l))
-                        {
-                            double sigma_i = sigma.at((ii - 1) + h_model->GetNbinsX() * (jj - 1));
-                            double sigma_j = sigma.at((kk - 1) + h_model->GetNbinsX() * (ll - 1));
-                            c += sigma_i * sigma_j;
-                        }
-                        int index_i = (ii - 1) + h_model->GetNbinsX() * (jj - 1);
-                        int index_j = (kk - 1) + h_model->GetNbinsX() * (kk - 1);
-                        double alpha_i = sys1.at(index_i);
-                        double alpha_j = sys1.at(index_j);
-                        c += alpha_i * alpha_j;
-                        alpha_i = sys2.at(index_i);
-                        alpha_j = sys2.at(index_j);
-                        c += alpha_i * alpha_j;
-
-                        //std::cout << "j=" << j << " i=" << i << " " << c << std::endl;
-                        matrix->operator[](k + count_sqrt * l).operator[](i + count_sqrt * j) = c;
-
-                        ++ i;
-                    }
-
-                    ++ j;
-                }
-
-                ++ k;
-            }
-
-            ++ l;
-        }
-
-    }
-    matrix->Invert();
-
-    double chi2 = 0.0;
-    for(int j = 0; j < matrix->GetNrows(); ++ j)
-    {
-        for(int i = 0; i < matrix->GetNcols(); ++ i)
-        {
-            double v_i = delta.at(i);
-            double V_ij = matrix->operator[](j).operator[](i);
-            double v_j = delta.at(j);
-            chi2 += v_i * V_ij * v_j;
-        }
-    }
-
-    return chi2;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// chi2 2D
-///////////////////////////////////////////////////////////////////////////////
-
-double calc_chi2(TH2D* h_data, TH2D* h_model)
-{
-    throw "todo";
-    double chi2 = 0.0;
-    for(Int_t j = 1; j <= h_model->GetNbinsX(); ++ j)
-    {
-        for(Int_t i = 1; i <= h_model->GetNbinsY(); ++ i)
-        {
-            double content_model = h_model->GetBinContent(i, j);
-            double content_data = h_data->GetBinContent(i, j);
-            double error_model = std::sqrt(content_model);
-            if((content_model == 0.0) && (content_data == 0.0))
-            {
-                continue;
-            }
-            double chi = std::pow((content_data - content_model) / error_model, 2.0);
-            chi2 += chi;
-        }
-    }
-    return chi2;
-}
 
 
 void reset_systematic_arrays()
@@ -745,7 +510,7 @@ void systematic_arrays_add(std::vector<double> &alpha_coeff_ch0,
     {
         double delta = h_ch0_HSD_sys->GetBinContent(i) - h_ch0_HSD->GetBinContent(i);
         //std::cout << "delta=" << delta << std::endl;
-        chi2_SYS_CH0.at(i - 1) += std::abs(delta);
+        chi2_SYS_CH0.at(i - 1) += delta * delta;
     }
 
 
@@ -774,7 +539,7 @@ void systematic_arrays_add(std::vector<double> &alpha_coeff_ch0,
     for(Int_t i = 1; i <= N_BINS_CH1; ++ i)
     {
         double delta = h_ch1_HSD_sys->GetBinContent(i) - h_ch1_HSD->GetBinContent(i);
-        chi2_SYS_CH1.at(i - 1) += std::abs(delta);
+        chi2_SYS_CH1.at(i - 1) += delta * delta;
     }
     
 
@@ -818,7 +583,7 @@ void systematic_arrays_add(std::vector<double> &alpha_coeff_ch0,
         for(Int_t i = 1; i <= N_BINS_CH10; ++ i)
         {
             double delta = h_ch10_HSD_sys->GetBinContent(i, j) - h_ch10_HSD->GetBinContent(i, j);
-            chi2_SYS_CH10.at((i - 1) + N_BINS_CH10 * (j - 1)) += std::abs(delta);
+            chi2_SYS_CH10.at((i - 1) + N_BINS_CH10 * (j - 1)) += delta * delta;
         }
     }
 
@@ -965,6 +730,19 @@ int main()
 
     
 
+    /*
+    N_BINS_CH0 = 50;
+    N_BINS_CH1 = 50;
+    reinit_all(N2e);
+    double chi2ch0 = calc_chi2(h_ch0_SSD, h_ch0_HSD, alpha_coeff_ch0_sys1, alpha_coeff_ch0_sys2);
+    std::cout << "chi2ch0=" << chi2ch0 << std::endl;
+    draw_hist_ratio_pull(0, h_ch0_SSD, h_ch0_HSD, &chi2_SYS_CH0, "tmpdeletemech0", "CH0", chi2ch0);
+    double chi2 = calc_chi2(h_ch1_SSD, h_ch1_HSD, alpha_coeff_ch1_sys1, alpha_coeff_ch1_sys2);
+    std::cout << "chi2=" << chi2 << std::endl;
+    draw_hist_ratio_pull(1, h_ch1_SSD, h_ch1_HSD, &chi2_SYS_CH1, "tmpdeleteme", "CH1", chi2);
+
+    return 0;
+    */
 
 
     // draw total E for 3, 4 bins
