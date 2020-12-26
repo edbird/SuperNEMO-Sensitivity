@@ -37,6 +37,8 @@ double calc_chi2(
     const std::vector<double> &sys1,
     const std::vector<double> &sys2)
 {
+
+    std::cout << __func__ << " (1d)" << std::endl;
     
     std::vector<double> delta; // d - m
     std::vector<double> sigma; // sigma i
@@ -76,30 +78,37 @@ double calc_chi2(
                     c += sigma_i * sigma_j;
                 }
 
+                std::cout << "c=" << c << std::endl;
+
                 if(g_CHI2_SYSZERO == true)
                 {
                     // ignore all systematic terms
+                    std::cout << "IGNORE SYSZERO" << std::endl;
                 }
                 else
                 {
                     if((g_CHI2_OFFDIAGZERO == true) && (i != j))
                     {
                         // ignore off diagonal terms
+                        std::cout << "IGNORE OFFDIAG" << std::endl;
                     }
                     else
                     {
                         double alpha_i = sys1.at(ii - 1);
                         double alpha_j = sys1.at(jj - 1);
+                        std::cout << "alpha_i=" << alpha_i << " alpha_j=" << alpha_j << " -> " << alpha_i * alpha_j << std::endl;
                         //if(i == j)
                         {
                         c += alpha_i * alpha_j;
                         }
                         alpha_i = sys2.at(ii - 1);
                         alpha_j = sys2.at(jj - 1);
+                        std::cout << "alpha_i=" << alpha_i << " alpha_j=" << alpha_j << " -> " << alpha_i * alpha_j << std::endl;
                         //if(i == j)
                         {
                         c += alpha_i * alpha_j;
                         }
+                        std::cout << "ACCEPT" << std::endl;
                     }
                 }
 
