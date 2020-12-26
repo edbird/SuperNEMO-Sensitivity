@@ -752,6 +752,14 @@ int main()
     TGraph *g_chi2_ch0 = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
     TGraph *g_chi2_ch1 = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
     TGraph *g_chi2_ch10 = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
+
+    TGraph *g_chi2_ch0_sz = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
+    TGraph *g_chi2_ch1_sz = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
+    TGraph *g_chi2_ch10_sz = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN); // systematic terms zero
+    
+    TGraph *g_chi2_ch0_odz = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
+    TGraph *g_chi2_ch1_odz = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN);
+    TGraph *g_chi2_ch10_odz = new TGraph(N_BINS_MAX + 1 - N_BINS_MIN); // diag terms zero
     int i = 0;
     for(int N_BINS = N_BINS_MIN; N_BINS <= N_BINS_MAX; ++ N_BINS)
     {
@@ -764,7 +772,7 @@ int main()
         double chi2_ch0 = calc_chi2(h_ch0_SSD, h_ch0_HSD, alpha_coeff_ch0_sys1, alpha_coeff_ch0_sys2);
         //std::cout << "***** CALC CHI2 CH1 ******" << std::endl;
         double chi2_ch1 = calc_chi2(h_ch1_SSD, h_ch1_HSD, alpha_coeff_ch1_sys1, alpha_coeff_ch1_sys2);
-        double chi2_ch10 = 0.0; // calc_chi2(h_ch10_SSD, h_ch10_HSD, alpha_coeff_ch10_sys1, alpha_coeff_ch10_sys2);
+        double chi2_ch10 = calc_chi2(h_ch10_SSD, h_ch10_HSD, alpha_coeff_ch10_sys1, alpha_coeff_ch10_sys2);
 
         TString fns_ch0;
         fns_ch0.Form("CH0_%d_bins", N_BINS_CH0);
@@ -777,6 +785,34 @@ int main()
         g_chi2_ch0->SetPoint(i, (double)N_BINS, chi2_ch0);
         g_chi2_ch1->SetPoint(i, (double)N_BINS, chi2_ch1);
         g_chi2_ch10->SetPoint(i, (double)N_BINS, chi2_ch10);
+
+        {
+            g_CHI2_SYSZERO = true;
+
+            double chi2_ch0 = calc_chi2(h_ch0_SSD, h_ch0_HSD, alpha_coeff_ch0_sys1, alpha_coeff_ch0_sys2);
+            double chi2_ch1 = calc_chi2(h_ch1_SSD, h_ch1_HSD, alpha_coeff_ch1_sys1, alpha_coeff_ch1_sys2);
+            double chi2_ch10 = calc_chi2(h_ch10_SSD, h_ch10_HSD, alpha_coeff_ch10_sys1, alpha_coeff_ch10_sys2);
+
+            g_chi2_ch0_sz->SetPoint(i, (double)N_BINS, chi2_ch0);
+            g_chi2_ch1_sz->SetPoint(i, (double)N_BINS, chi2_ch1);
+            g_chi2_ch10_sz->SetPoint(i, (double)N_BINS, chi2_ch10);
+
+            g_CHI2_SYSZERO = false;
+        }
+
+        {
+            g_CHI2_OFFDIAGZERO = true;
+
+            double chi2_ch0 = calc_chi2(h_ch0_SSD, h_ch0_HSD, alpha_coeff_ch0_sys1, alpha_coeff_ch0_sys2);
+            double chi2_ch1 = calc_chi2(h_ch1_SSD, h_ch1_HSD, alpha_coeff_ch1_sys1, alpha_coeff_ch1_sys2);
+            double chi2_ch10 = calc_chi2(h_ch10_SSD, h_ch10_HSD, alpha_coeff_ch10_sys1, alpha_coeff_ch10_sys2);
+
+            g_chi2_ch0_odz->SetPoint(i, (double)N_BINS, chi2_ch0);
+            g_chi2_ch1_odz->SetPoint(i, (double)N_BINS, chi2_ch1);
+            g_chi2_ch10_odz->SetPoint(i, (double)N_BINS, chi2_ch10);
+
+            g_CHI2_OFFDIAGZERO = false;
+        }
 
         ++ i;
     }
@@ -803,6 +839,20 @@ int main()
     g_chi2_ch1->Write();
     g_chi2_ch10->SetName("g_ch10");
     g_chi2_ch10->Write();
+
+    g_chi2_ch0_odz->SetName("g_ch0_odz");
+    g_chi2_ch0_odz->Write();
+    g_chi2_ch1_odz->SetName("g_ch1_odz");
+    g_chi2_ch1_odz->Write();
+    g_chi2_ch10_odz->SetName("g_ch10_odz");
+    g_chi2_ch10_odz->Write();
+
+    g_chi2_ch0_sz->SetName("g_ch0_sz");
+    g_chi2_ch0_sz->Write();
+    g_chi2_ch1_sz->SetName("g_ch1_sz");
+    g_chi2_ch1_sz->Write();
+    g_chi2_ch10_sz->SetName("g_ch10_sz");
+    g_chi2_ch10_sz->Write();
 
 
     if(0)
